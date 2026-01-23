@@ -3,67 +3,55 @@ using DocumentManager.Api.DTOs;
 using DocumentManager.Api.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 
 namespace DocumentManager.Api.Controllers
 {
     [ApiController]
-    [Authorize]
     [Route("api/documents")]
+    [Authorize]
     public class DocumentsController : ControllerBase
     {
-        private readonly AppDbContext _db;
+        private readonly AppDbContext _context;
 
-        public DocumentsController(AppDbContext db)
+        public DocumentsController(AppDbContext context)
         {
-            _db = db;
+            _context = context;
         }
 
         [HttpGet("my")]
-        public IActionResult MyDocuments()
+        public async Task<IActionResult> GetMyDocuments()
         {
             var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-
-            var docs = _db.Documents
-                .Where(d => d.OwnerId == userId && d.Status == DocumentStatus.Active)
-                .ToList();
+            var docs = await _context.Documents
+                .Where(d => d.OwnerId == userId && !d.IsDeleted)
+                .ToListAsync();
 
             return Ok(docs);
         }
 
         [HttpPost]
-        public async Task<IActionResult> Create(CreateDocumentDto dto)
+        public async Task<IActionResult> CreateDocument([FromBody] Document doc)
         {
             var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-
-            var doc = new Document
-            {
-                OwnerId = userId,
-                Name = dto.Name,
-                Description = dto.Description,
-                ExpirationAt = DateTime.UtcNow.AddDays(dto.ExpirationDays)
-            };
-
-            _db.Documents.Add(doc);
-            await _db.SaveChangesAsync();
-
+            doc.OwnerId = userId;
+            _context.Documents.Add(doc);
+            await _context.SaveChangesAsync();
             return Ok(doc);
         }
 
         [HttpDelete("{id}")]
-        public async Task<IActionResult> SoftDelete(Guid id)
+        public async Task<IActionResult> SoftDelete(int id)
         {
             var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-
-            var doc = _db.Documents.FirstOrDefault(d => d.Id == id && d.OwnerId == userId);
-            if (doc == null) return NotFound();
-
-            doc.Status = DocumentStatus.Deleted;
-            doc.DeletedAt = DateTime.UtcNow.AddDays(30);
-
-            await _db.SaveChangesAsync();
+            var doc = await _context.Documents.FindAsync(id);
+            if (doc == null || doc.OwnerId != userId) return NotFound();
+            doc.IsDeleted = true;
+            await _context.SaveChangesAsync();
             return NoContent();
         }
     }
+
 
 }

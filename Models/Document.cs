@@ -19,5 +19,7 @@ namespace DocumentManager.Api.Models
 
         public DocumentStatus Status { get; set; } = DocumentStatus.Active;
         public DateTime? DeletedAt { get; set; }
+        public bool IsDeleted { get; set; } = false; 
+
     }
 }

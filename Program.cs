@@ -8,14 +8,8 @@ using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// =======================
-// Controllers
-// =======================
 builder.Services.AddControllers();
 
-// =======================
-// DB
-// =======================
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(
         builder.Configuration.GetConnectionString("Default"),
@@ -23,14 +17,8 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     )
 );
 
-// =======================
-// Services
-// =======================
 builder.Services.AddScoped<TokenService>();
 
-// =======================
-// JWT
-// =======================
 var jwtKey = builder.Configuration["Jwt:Key"]!;
 var keyBytes = Encoding.UTF8.GetBytes(jwtKey);
 
@@ -47,9 +35,6 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     };
 });
 
-// =======================
-// Swagger + JWT
-// =======================
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo
@@ -86,9 +71,6 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
-// =======================
-// Middleware
-// =======================
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
