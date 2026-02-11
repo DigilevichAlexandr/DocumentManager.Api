@@ -1,0 +1,589 @@
+@page
+@model DocumentManager.Ui.Pages.IndexModel
+@{
+    ViewData["Title"] = "Документы";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="mb-0">Мои документы</h1>
+    <div class="btn-group" role="group">
+        <a href="/History" class="btn btn-outline-secondary">
+            <i class="bi bi-clock-history"></i> История
+        </a>
+        <a href="/Statistics" class="btn btn-outline-info">
+            <i class="bi bi-bar-chart"></i> Статистика
+        </a>
+    </div>
+</div>
+
+@if (!ViewData.ContainsKey("IsAuthenticated") || !(bool)ViewData["IsAuthenticated"]!)
+{
+    <p>Вы не авторизованы. Пожалуйста, выполните <a href="/Auth">вход</a>.</p>
+}
+else
+{
+    if (Model.IsLoading && Model.Documents.Count == 0)
+    {
+        <p>Загрузка...</p>
+    }
+    else if (!string.IsNullOrEmpty(Model.Error))
+    {
+        <div class="alert alert-danger">
+            <strong>Ошибка:</strong> @Model.Error
+            @if (Model.Error.Contains("401") || Model.Error.Contains("Unauthorized") || Model.Error.Contains("Сессия истекла"))
+            {
+                <br />
+                <a href="/Auth" class="alert-link">Выполните вход снова</a>
+            }
+        </div>
+    }
+    else
+    {
+        <h3>Список документов</h3>
+
+        @if (Model.Documents.Count == 0)
+        {
+            <p>Документов пока нет.</p>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Название</th>
+                            <th>Описание</th>
+                            <th>Создан</th>
+                            <th>Истекает</th>
+                            <th>Файл</th>
+                            <th>Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var d in Model.Documents)
+                    {
+                        <tr>
+                            <td>@d.Name</td>
+                            <td>@d.Description</td>
+                            <td>@d.CreatedAt.ToLocalTime().ToString("g")</td>
+                            <td>@d.ExpirationAt.ToLocalTime().ToString("d")</td>
+                            <td>
+                                @if (!string.IsNullOrEmpty(d.FileName))
+                                {
+                                    <a href="javascript:void(0)" onclick="downloadFile('@d.Id')" class="text-decoration-none">
+                                        <i class="bi bi-download"></i> @d.FileName (@(d.FileSize ?? 0) байт)
+                                    </a>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">нет файла</span>
+                                }
+                            </td>
+                            <td>
+                                <div class="btn-group" role="group">
+                                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="editDocument('@d.Id', '@Html.Raw(d.Name.Replace("'", "\\'"))', '@Html.Raw((d.Description ?? "").Replace("'", "\\'"))', '@d.ExpirationAt.ToString("yyyy-MM-dd")')" title="Редактировать">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-success" onclick="shareDocument('@d.Id')" title="Поделиться">
+                                        <i class="bi bi-share"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-info" onclick="showComments('@d.Id')" title="Комментарии">
+                                        <i class="bi bi-chat-left-text"></i> <span class="badge bg-secondary">@(d.Comments?.Count ?? 0)</span>
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-warning" onclick="setMetadata('@d.Id', @(d.Metadata?.Latitude?.ToString() ?? "null"), @(d.Metadata?.Longitude?.ToString() ?? "null"), '@(d.Metadata?.LocationName ?? "")')" title="Метаданные">
+                                        <i class="bi bi-geo-alt"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteDocument('@d.Id', '@d.Name')" title="Удалить">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        }
+
+        <h3>Создать документ</h3>
+
+        @if (!string.IsNullOrEmpty(Model.SuccessMessage))
+        {
+            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                @Model.SuccessMessage
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        }
+
+        <form method="post" enctype="multipart/form-data" id="createDocumentForm">
+            <div asp-validation-summary="All" class="text-danger mb-3"></div>
+
+            @if (!string.IsNullOrEmpty(Model.Error))
+            {
+                <div class="alert alert-danger">@Model.Error</div>
+            }
+
+            <div class="mb-3">
+                <label asp-for="CreateModel.Name" class="form-label">Название <span class="text-danger">*</span></label>
+                <input asp-for="CreateModel.Name" class="form-control" required />
+                <span asp-validation-for="CreateModel.Name" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="CreateModel.Description" class="form-label">Описание</label>
+                <input asp-for="CreateModel.Description" class="form-control" />
+                <span asp-validation-for="CreateModel.Description" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="CreateModel.ExpirationDays" class="form-label">Сколько дней документ актуален</label>
+                <input asp-for="CreateModel.ExpirationDays" class="form-control" type="number" min="1" max="365" />
+                <span asp-validation-for="CreateModel.ExpirationDays" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Файл (необязательно)</label>
+                <input type="file" name="file" class="form-control" accept="*/*" />
+            </div>
+
+            <button class="btn btn-primary" type="submit" disabled="@(Model.IsLoading ? true : false)">
+                @(Model.IsLoading ? "Сохранение..." : "Создать")
+            </button>
+        </form>
+    }
+}
+
+<!-- Модальное окно редактирования документа -->
+<div class="modal fade" id="editDocumentModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Редактировать документ</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="editDocumentForm">
+                <div class="modal-body">
+                    <input type="hidden" id="editDocumentId" />
+                    <div class="mb-3">
+                        <label for="editDocumentName" class="form-label">Название <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="editDocumentName" required />
+                    </div>
+                    <div class="mb-3">
+                        <label for="editDocumentDescription" class="form-label">Описание</label>
+                        <textarea class="form-control" id="editDocumentDescription"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editExpirationDays" class="form-label">Сколько дней документ актуален</label>
+                        <input type="number" class="form-control" id="editExpirationDays" min="1" max="365" required />
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-primary">Сохранить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно шаринга -->
+<div class="modal fade" id="shareDocumentModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Поделиться документом</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="shareLinkContainer" style="display: none;">
+                    <p>Ссылка для шаринга:</p>
+                    <div class="input-group mb-3">
+                        <input type="text" class="form-control" id="shareLink" readonly />
+                        <button class="btn btn-outline-secondary" type="button" onclick="copyShareLink()">
+                            <i class="bi bi-clipboard"></i> Копировать
+                        </button>
+                    </div>
+                    <p class="text-muted small">После открытия ссылки документ будет скопирован получателю и удален из вашего списка.</p>
+                </div>
+                <div id="shareLoading" class="text-center">
+                    <div class="spinner-border" role="status">
+                        <span class="visually-hidden">Загрузка...</span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно комментариев -->
+<div class="modal fade" id="commentsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Комментарии</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addCommentForm" class="mb-3">
+                    <input type="hidden" id="commentDocumentId" />
+                    <div class="mb-3">
+                        <label for="commentText" class="form-label">Добавить комментарий</label>
+                        <textarea class="form-control" id="commentText" rows="3" required></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Добавить</button>
+                </form>
+                <hr />
+                <div id="commentsList"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно метаданных с картой -->
+<div class="modal fade" id="metadataModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Метаданные документа</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="metadataForm">
+                <div class="modal-body">
+                    <input type="hidden" id="metadataDocumentId" />
+                    <div class="mb-3">
+                        <label class="form-label">Выберите местоположение на карте</label>
+                        <div id="map" style="height: 400px; width: 100%;"></div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="locationName" class="form-label">Название места</label>
+                        <input type="text" class="form-control" id="locationName" />
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <label for="latitude" class="form-label">Широта</label>
+                            <input type="number" step="any" class="form-control" id="latitude" readonly />
+                        </div>
+                        <div class="col-md-6">
+                            <label for="longitude" class="form-label">Долгота</label>
+                            <input type="number" step="any" class="form-control" id="longitude" readonly />
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-primary">Сохранить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <input type="hidden" id="authToken" value="@(Model.AuthToken ?? "")" />
+    <input type="hidden" id="apiBaseUrl" value="@Model.ApiBaseUrl" />
+    <script>
+        let map, marker;
+        let currentShareDocumentId = null;
+        const authToken = document.getElementById('authToken').value;
+        const apiBaseUrl = document.getElementById('apiBaseUrl').value;
+
+        // Редактирование документа
+        function editDocument(id, name, description, expirationDate) {
+            document.getElementById('editDocumentId').value = id;
+            document.getElementById('editDocumentName').value = name;
+            document.getElementById('editDocumentDescription').value = description;
+            
+            // Вычисляем количество дней до истечения
+            const expDate = new Date(expirationDate + 'T00:00:00');
+            const now = new Date();
+            const days = Math.ceil((expDate - now) / (1000 * 60 * 60 * 24));
+            document.getElementById('editExpirationDays').value = days > 0 ? days : 30;
+            
+            new bootstrap.Modal(document.getElementById('editDocumentModal')).show();
+        }
+
+        document.getElementById('editDocumentForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const id = document.getElementById('editDocumentId').value;
+            const name = document.getElementById('editDocumentName').value;
+            const description = document.getElementById('editDocumentDescription').value;
+            const expirationDays = parseInt(document.getElementById('editExpirationDays').value);
+
+            try {
+                const response = await fetch(`${apiBaseUrl}/api/documents/${id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + authToken
+                    },
+                    body: JSON.stringify({ name, description, expirationDays })
+                });
+
+                if (response.ok) {
+                    bootstrap.Modal.getInstance(document.getElementById('editDocumentModal')).hide();
+                    window.showToast('Документ успешно обновлен', 'success');
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    const error = await response.text();
+                    window.showToast('Ошибка: ' + error, 'error');
+                }
+            } catch (error) {
+                window.showToast('Ошибка: ' + error.message, 'error');
+            }
+        });
+
+        // Шаринг документа
+        function shareDocument(id) {
+            currentShareDocumentId = id;
+            document.getElementById('shareLinkContainer').style.display = 'none';
+            document.getElementById('shareLoading').style.display = 'block';
+            new bootstrap.Modal(document.getElementById('shareDocumentModal')).show();
+
+            fetch(`${apiBaseUrl}/api/documents/${id}/share`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': 'Bearer ' + authToken
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('shareLoading').style.display = 'none';
+                document.getElementById('shareLinkContainer').style.display = 'block';
+                document.getElementById('shareLink').value = data.shareUrl;
+            })
+            .catch(error => {
+                document.getElementById('shareLoading').style.display = 'none';
+                window.showToast('Ошибка создания ссылки: ' + error.message, 'error');
+            });
+        }
+
+        function copyShareLink() {
+            const linkInput = document.getElementById('shareLink');
+            linkInput.select();
+            document.execCommand('copy');
+            window.showToast('Ссылка скопирована в буфер обмена', 'success');
+        }
+
+        // Комментарии
+        function showComments(documentId) {
+            document.getElementById('commentDocumentId').value = documentId;
+            loadComments(documentId);
+            new bootstrap.Modal(document.getElementById('commentsModal')).show();
+        }
+
+        async function loadComments(documentId) {
+            try {
+                const response = await fetch(`${apiBaseUrl}/api/documents/${documentId}/comments`, {
+                    headers: {
+                        'Authorization': 'Bearer ' + authToken
+                    }
+                });
+                const comments = await response.json();
+                
+                const commentsList = document.getElementById('commentsList');
+                if (comments.length === 0) {
+                    commentsList.innerHTML = '<p class="text-muted">Комментариев пока нет.</p>';
+                } else {
+                    commentsList.innerHTML = comments.map(c => `
+                        <div class="card mb-2">
+                            <div class="card-body">
+                                <p class="card-text">${escapeHtml(c.text)}</p>
+                                <small class="text-muted">${c.userEmail} - ${new Date(c.createdAt).toLocaleString('ru-RU')}</small>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+            } catch (error) {
+                window.showToast('Ошибка загрузки комментариев: ' + error.message, 'error');
+            }
+        }
+
+        document.getElementById('addCommentForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const documentId = document.getElementById('commentDocumentId').value;
+            const text = document.getElementById('commentText').value;
+
+            try {
+                const response = await fetch(`${apiBaseUrl}/api/documents/${documentId}/comments`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + authToken
+                    },
+                    body: JSON.stringify({ text })
+                });
+
+                if (response.ok) {
+                    document.getElementById('commentText').value = '';
+                    loadComments(documentId);
+                    window.showToast('Комментарий добавлен', 'success');
+                } else {
+                    const error = await response.text();
+                    window.showToast('Ошибка: ' + error, 'error');
+                }
+            } catch (error) {
+                window.showToast('Ошибка: ' + error.message, 'error');
+            }
+        });
+
+        // Метаданные с картой
+        function setMetadata(documentId, lat, lng, locationName) {
+            document.getElementById('metadataDocumentId').value = documentId;
+            document.getElementById('locationName').value = locationName || '';
+            
+            const modal = new bootstrap.Modal(document.getElementById('metadataModal'));
+            modal.show();
+            
+            setTimeout(() => {
+                if (!map) {
+                    map = L.map('map').setView([55.7558, 37.6173], 10); // Москва по умолчанию
+                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                        attribution: '© OpenStreetMap contributors'
+                    }).addTo(map);
+                    
+                    if (lat && lng) {
+                        const latNum = parseFloat(lat);
+                        const lngNum = parseFloat(lng);
+                        map.setView([latNum, lngNum], 13);
+                        marker = L.marker([latNum, lngNum]).addTo(map);
+                        document.getElementById('latitude').value = latNum;
+                        document.getElementById('longitude').value = lngNum;
+                    } else {
+                        // Попытка получить текущее местоположение
+                        if (navigator.geolocation) {
+                            navigator.geolocation.getCurrentPosition(position => {
+                                map.setView([position.coords.latitude, position.coords.longitude], 13);
+                                marker = L.marker([position.coords.latitude, position.coords.longitude]).addTo(map);
+                                document.getElementById('latitude').value = position.coords.latitude;
+                                document.getElementById('longitude').value = position.coords.longitude;
+                            });
+                        }
+                    }
+                    
+                    map.on('click', function(e) {
+                        const lat = e.latlng.lat;
+                        const lng = e.latlng.lng;
+                        document.getElementById('latitude').value = lat;
+                        document.getElementById('longitude').value = lng;
+                        
+                        if (marker) {
+                            marker.setLatLng([lat, lng]);
+                        } else {
+                            marker = L.marker([lat, lng]).addTo(map);
+                        }
+                    });
+                } else {
+                    if (lat && lng) {
+                        const latNum = parseFloat(lat);
+                        const lngNum = parseFloat(lng);
+                        map.setView([latNum, lngNum], 13);
+                        if (marker) {
+                            marker.setLatLng([latNum, lngNum]);
+                        } else {
+                            marker = L.marker([latNum, lngNum]).addTo(map);
+                        }
+                        document.getElementById('latitude').value = latNum;
+                        document.getElementById('longitude').value = lngNum;
+                    }
+                }
+            }, 300);
+        }
+
+        document.getElementById('metadataForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const documentId = document.getElementById('metadataDocumentId').value;
+            const latitude = parseFloat(document.getElementById('latitude').value);
+            const longitude = parseFloat(document.getElementById('longitude').value);
+            const locationName = document.getElementById('locationName').value;
+
+            try {
+                const response = await fetch(`${apiBaseUrl}/api/documents/${documentId}/metadata`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + authToken
+                    },
+                    body: JSON.stringify({ latitude, longitude, locationName })
+                });
+
+                if (response.ok) {
+                    bootstrap.Modal.getInstance(document.getElementById('metadataModal')).hide();
+                    window.showToast('Метаданные сохранены', 'success');
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    const error = await response.text();
+                    window.showToast('Ошибка: ' + error, 'error');
+                }
+            } catch (error) {
+                window.showToast('Ошибка: ' + error.message, 'error');
+            }
+        });
+
+        // Удаление документа
+        function deleteDocument(id, name) {
+            if (confirm(`Вы уверены, что хотите удалить документ "${name}"?`)) {
+                fetch(`${apiBaseUrl}/api/documents/${id}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': 'Bearer ' + authToken
+                    }
+                })
+                .then(response => {
+                    if (response.ok) {
+                        window.showToast('Документ удален', 'success');
+                        setTimeout(() => location.reload(), 1000);
+                    } else {
+                        return response.text().then(text => {
+                            throw new Error(text);
+                        });
+                    }
+                })
+                .catch(error => {
+                    window.showToast('Ошибка: ' + error.message, 'error');
+                });
+            }
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Скачивание файла
+        function downloadFile(documentId) {
+            fetch(`${apiBaseUrl}/api/documents/${documentId}/download`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': 'Bearer ' + authToken
+                }
+            })
+            .then(response => {
+                if (response.ok) {
+                    return response.blob();
+                }
+                throw new Error('Ошибка загрузки файла');
+            })
+            .then(blob => {
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = '';
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+            })
+            .catch(error => {
+                window.showToast('Ошибка скачивания: ' + error.message, 'error');
+            });
+        }
+    </script>
+}

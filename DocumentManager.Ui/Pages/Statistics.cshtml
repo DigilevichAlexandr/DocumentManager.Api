@@ -1,0 +1,179 @@
+@page
+@model DocumentManager.Ui.Pages.StatisticsModel
+@{
+    ViewData["Title"] = "Статистика";
+}
+
+<h1>Статистика документооборота</h1>
+
+@if (!ViewData.ContainsKey("IsAuthenticated") || !(bool)ViewData["IsAuthenticated"]!)
+{
+    <p>Вы не авторизованы. Пожалуйста, выполните <a href="/Auth">вход</a>.</p>
+}
+else
+{
+    <div class="mb-3">
+        <form method="get" class="d-inline">
+            <label for="year" class="form-label">Фильтр по году:</label>
+            <select name="year" id="year" class="form-select d-inline-block" style="width: auto;" onchange="this.form.submit()">
+                <option value="">Все годы</option>
+                @if (Model.Statistics?.DocumentsByYear != null)
+                {
+                    @foreach (var year in Model.Statistics.DocumentsByYear.Keys.OrderByDescending(y => y))
+                    {
+                        <option value="@year" selected="@(Model.SelectedYear == year)">@year</option>
+                    }
+                }
+            </select>
+        </form>
+    </div>
+
+    @if (Model.IsLoading)
+    {
+        <p>Загрузка...</p>
+    }
+    else if (!string.IsNullOrEmpty(Model.Error))
+    {
+        <div class="alert alert-danger">
+            <strong>Ошибка:</strong> @Model.Error
+            @if (Model.Error.Contains("401") || Model.Error.Contains("Unauthorized") || Model.Error.Contains("Сессия истекла"))
+            {
+                <br />
+                <a href="/Auth" class="alert-link">Выполните вход снова</a>
+            }
+        </div>
+    }
+    else if (Model.Statistics != null)
+    {
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">Всего документов</h5>
+                        <h2 class="text-primary">@Model.Statistics.TotalDocuments</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">Активных</h5>
+                        <h2 class="text-success">@Model.Statistics.ActiveDocuments</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">В архиве</h5>
+                        <h2 class="text-warning">@Model.Statistics.ArchivedDocuments</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">Комментариев</h5>
+                        <h2 class="text-info">@Model.Statistics.TotalComments</h2>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">Документы по годам</h5>
+                        <canvas id="yearChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">Документы по месяцам</h5>
+                        <canvas id="monthChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @if (Model.Statistics.AverageDocumentLifetimeDays > 0)
+        {
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Средний срок жизни документа</h5>
+                    <h3>@Model.Statistics.AverageDocumentLifetimeDays дней</h3>
+                </div>
+            </div>
+        }
+    }
+}
+
+@section Scripts {
+    <script>
+        @if (Model.Statistics != null)
+        {
+            <text>
+            // График по годам
+            const yearCtx = document.getElementById('yearChart');
+            if (yearCtx) {
+                const yearData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Statistics.DocumentsByYear.Keys.OrderBy(y => y).Select(y => y.ToString())));
+                const yearCounts = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Statistics.DocumentsByYear.Keys.OrderBy(y => y).Select(y => Model.Statistics.DocumentsByYear[y])));
+                
+                new Chart(yearCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: yearData,
+                        datasets: [{
+                            label: 'Количество документов',
+                            data: yearCounts,
+                            backgroundColor: 'rgba(54, 162, 235, 0.5)',
+                            borderColor: 'rgba(54, 162, 235, 1)',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        scales: {
+                            y: {
+                                beginAtZero: true
+                            }
+                        }
+                    }
+                });
+            }
+
+            // График по месяцам
+            const monthCtx = document.getElementById('monthChart');
+            if (monthCtx) {
+                const monthData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Statistics.DocumentsByMonth.Keys.OrderBy(m => m).Select(m => m)));
+                const monthCounts = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Statistics.DocumentsByMonth.Keys.OrderBy(m => m).Select(m => Model.Statistics.DocumentsByMonth[m])));
+                
+                new Chart(monthCtx, {
+                    type: 'line',
+                    data: {
+                        labels: monthData,
+                        datasets: [{
+                            label: 'Количество документов',
+                            data: monthCounts,
+                            borderColor: 'rgba(75, 192, 192, 1)',
+                            backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                            tension: 0.1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        scales: {
+                            y: {
+                                beginAtZero: true
+                            }
+                        }
+                    }
+                });
+            }
+            </text>
+        }
+    </script>
+}

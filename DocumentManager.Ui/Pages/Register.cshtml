@@ -1,0 +1,39 @@
+@page
+@model DocumentManager.Ui.Pages.RegisterModel
+@{
+    ViewData["Title"] = "Регистрация";
+}
+
+<h1>Регистрация</h1>
+
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger">@TempData["ErrorMessage"]</div>
+}
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success">@TempData["SuccessMessage"]</div>
+}
+
+<form method="post">
+    <div class="mb-3">
+        <label asp-for="Model.Email" class="form-label">Email</label>
+        <input asp-for="Model.Email" class="form-control" type="email" />
+        <span asp-validation-for="Model.Email" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="Model.Password" class="form-label">Пароль</label>
+        <input asp-for="Model.Password" class="form-control" type="password" />
+        <span asp-validation-for="Model.Password" class="text-danger"></span>
+    </div>
+
+    <button class="btn btn-primary" type="submit" disabled="@Model.IsSubmitting">
+        @(Model.IsSubmitting ? "Регистрация..." : "Зарегистрироваться")
+    </button>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

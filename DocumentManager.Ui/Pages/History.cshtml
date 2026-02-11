@@ -1,0 +1,76 @@
+@page
+@model DocumentManager.Ui.Pages.HistoryModel
+@{
+    ViewData["Title"] = "История документов";
+}
+
+<h1>История документов</h1>
+
+@if (!ViewData.ContainsKey("IsAuthenticated") || !(bool)ViewData["IsAuthenticated"]!)
+{
+    <p>Вы не авторизованы. Пожалуйста, выполните <a href="/Auth">вход</a>.</p>
+}
+else
+{
+    if (Model.IsLoading && Model.Documents.Count == 0)
+    {
+        <p>Загрузка...</p>
+    }
+    else if (!string.IsNullOrEmpty(Model.Error))
+    {
+        <div class="alert alert-danger">
+            <strong>Ошибка:</strong> @Model.Error
+            @if (Model.Error.Contains("401") || Model.Error.Contains("Unauthorized") || Model.Error.Contains("Сессия истекла"))
+            {
+                <br />
+                <a href="/Auth" class="alert-link">Выполните вход снова</a>
+            }
+        </div>
+    }
+    else
+    {
+        @if (Model.Documents.Count == 0)
+        {
+            <p>История пуста. Здесь будут отображаться документы, срок действия которых истек.</p>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Название</th>
+                            <th>Описание</th>
+                            <th>Создан</th>
+                            <th>Истек</th>
+                            <th>Заархивирован</th>
+                            <th>Файл</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var d in Model.Documents)
+                        {
+                            <tr>
+                                <td>@d.Name</td>
+                                <td>@d.Description</td>
+                                <td>@d.CreatedAt.ToLocalTime().ToString("g")</td>
+                                <td>@d.ExpirationAt.ToLocalTime().ToString("g")</td>
+                                <td>@(d.ArchivedAt?.ToLocalTime().ToString("g") ?? "-")</td>
+                                <td>
+                                    @if (!string.IsNullOrEmpty(d.FileName))
+                                    {
+                                        <span>@d.FileName (@(d.FileSize ?? 0) байт)</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">нет файла</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    }
+}

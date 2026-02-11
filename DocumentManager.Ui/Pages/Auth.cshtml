@@ -1,0 +1,126 @@
+@page
+@model DocumentManager.Ui.Pages.AuthModel
+@{
+    ViewData["Title"] = "Авторизация";
+}
+
+<h1>Авторизация</h1>
+
+<ul class="nav nav-tabs mb-4" id="authTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link @(Model.ActiveTab == "login" ? "active" : "")" 
+                id="login-tab" 
+                data-bs-toggle="tab" 
+                data-bs-target="#login" 
+                type="button" 
+                role="tab" 
+                aria-controls="login" 
+                aria-selected="@(Model.ActiveTab == "login" ? "true" : "false")">
+            Вход
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link @(Model.ActiveTab == "register" ? "active" : "")" 
+                id="register-tab" 
+                data-bs-toggle="tab" 
+                data-bs-target="#register" 
+                type="button" 
+                role="tab" 
+                aria-controls="register" 
+                aria-selected="@(Model.ActiveTab == "register" ? "true" : "false")">
+            Регистрация
+        </button>
+    </li>
+</ul>
+
+<div class="tab-content" id="authTabContent">
+    <!-- Вкладка Входа -->
+    <div class="tab-pane fade @(Model.ActiveTab == "login" ? "show active" : "")" 
+         id="login" 
+         role="tabpanel" 
+         aria-labelledby="login-tab">
+        
+        @if (TempData["LoginErrorMessage"] != null)
+        {
+            <div class="alert alert-danger">@TempData["LoginErrorMessage"]</div>
+        }
+
+        @if (TempData["LoginSuccessMessage"] != null)
+        {
+            <div class="alert alert-success">@TempData["LoginSuccessMessage"]</div>
+        }
+
+        <form method="post" asp-page-handler="Login">
+            <div class="mb-3">
+                <label asp-for="LoginModel.Email" class="form-label">Email</label>
+                <input asp-for="LoginModel.Email" class="form-control" type="email" />
+                <span asp-validation-for="LoginModel.Email" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="LoginModel.Password" class="form-label">Пароль</label>
+                <input asp-for="LoginModel.Password" class="form-control" type="password" />
+                <span asp-validation-for="LoginModel.Password" class="text-danger"></span>
+            </div>
+
+            <button class="btn btn-primary" type="submit" disabled="@Model.IsSubmittingLogin">
+                @(Model.IsSubmittingLogin ? "Вход..." : "Войти")
+            </button>
+        </form>
+    </div>
+
+    <!-- Вкладка Регистрации -->
+    <div class="tab-pane fade @(Model.ActiveTab == "register" ? "show active" : "")" 
+         id="register" 
+         role="tabpanel" 
+         aria-labelledby="register-tab">
+        
+        @if (TempData["RegisterErrorMessage"] != null)
+        {
+            <div class="alert alert-danger">@TempData["RegisterErrorMessage"]</div>
+        }
+
+        @if (TempData["RegisterSuccessMessage"] != null)
+        {
+            <div class="alert alert-success">@TempData["RegisterSuccessMessage"]</div>
+        }
+
+        <form method="post" asp-page-handler="Register">
+            <div class="mb-3">
+                <label asp-for="RegisterModel.Email" class="form-label">Email</label>
+                <input asp-for="RegisterModel.Email" class="form-control" type="email" />
+                <span asp-validation-for="RegisterModel.Email" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="RegisterModel.Password" class="form-label">Пароль</label>
+                <input asp-for="RegisterModel.Password" class="form-control" type="password" />
+                <span asp-validation-for="RegisterModel.Password" class="text-danger"></span>
+            </div>
+
+            <button class="btn btn-primary" type="submit" disabled="@Model.IsSubmittingRegister">
+                @(Model.IsSubmittingRegister ? "Регистрация..." : "Зарегистрироваться")
+            </button>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    @if (TempData["LoginSuccessMessage"] != null)
+    {
+        <script>
+            setTimeout(function() {
+                window.location.href = '@Url.Page("/Index")';
+            }, 500);
+        </script>
+    }
+    @if (TempData["RegisterSuccessMessage"] != null)
+    {
+        <script>
+            // Переключаемся на вкладку входа после успешной регистрации
+            var loginTab = new bootstrap.Tab(document.querySelector('#login-tab'));
+            loginTab.show();
+        </script>
+    }
+}
