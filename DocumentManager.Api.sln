@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DocumentManager.Api", "Docu
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DocumentManager.Ui", "DocumentManager.Ui\DocumentManager.Ui.csproj", "{AEF29D72-E7BC-49CF-BDDF-A14F2D5C5975}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DocumentManager.Api.Tests", "DocumentManager.Api.Tests\DocumentManager.Api.Tests.csproj", "{E9A944E7-5815-49A3-89D3-9DD0F53FC404}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -41,6 +43,18 @@ Global
 		{AEF29D72-E7BC-49CF-BDDF-A14F2D5C5975}.Release|x64.Build.0 = Release|Any CPU
 		{AEF29D72-E7BC-49CF-BDDF-A14F2D5C5975}.Release|x86.ActiveCfg = Release|Any CPU
 		{AEF29D72-E7BC-49CF-BDDF-A14F2D5C5975}.Release|x86.Build.0 = Release|Any CPU
+		{E9A944E7-5815-49A3-89D3-9DD0F53FC404}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E9A944E7-5815-49A3-89D3-9DD0F53FC404}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E9A944E7-5815-49A3-89D3-9DD0F53FC404}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{E9A944E7-5815-49A3-89D3-9DD0F53FC404}.Debug|x64.Build.0 = Debug|Any CPU
+		{E9A944E7-5815-49A3-89D3-9DD0F53FC404}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{E9A944E7-5815-49A3-89D3-9DD0F53FC404}.Debug|x86.Build.0 = Debug|Any CPU
+		{E9A944E7-5815-49A3-89D3-9DD0F53FC404}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E9A944E7-5815-49A3-89D3-9DD0F53FC404}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E9A944E7-5815-49A3-89D3-9DD0F53FC404}.Release|x64.ActiveCfg = Release|Any CPU
+		{E9A944E7-5815-49A3-89D3-9DD0F53FC404}.Release|x64.Build.0 = Release|Any CPU
+		{E9A944E7-5815-49A3-89D3-9DD0F53FC404}.Release|x86.ActiveCfg = Release|Any CPU
+		{E9A944E7-5815-49A3-89D3-9DD0F53FC404}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -12,6 +12,10 @@
     <Content Remove="DocumentManager.Ui\**" />
     <EmbeddedResource Remove="DocumentManager.Ui\**" />
     <None Remove="DocumentManager.Ui\**" />
+    <Compile Remove="DocumentManager.Api.Tests\**" />
+    <Content Remove="DocumentManager.Api.Tests\**" />
+    <EmbeddedResource Remove="DocumentManager.Api.Tests\**" />
+    <None Remove="DocumentManager.Api.Tests\**" />
   </ItemGroup>
 
   <ItemGroup>
