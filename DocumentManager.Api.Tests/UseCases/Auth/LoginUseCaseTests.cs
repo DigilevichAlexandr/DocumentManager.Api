@@ -3,6 +3,7 @@ using DocumentManager.Api.Application.Interfaces;
 using DocumentManager.Api.Application.UseCases.Auth;
 using DocumentManager.Api.Domain.Entities;
 using DocumentManager.Api.Domain.Interfaces;
+using DocumentManager.Api.Infrastructure.Services;
 using FluentAssertions;
 using Moq;
 using Xunit;
@@ -13,13 +14,15 @@ public class LoginUseCaseTests
 {
     private readonly Mock<IUserRepository> _userRepositoryMock;
     private readonly Mock<ITokenService> _tokenServiceMock;
+    private readonly IPasswordHasher _passwordHasher;
     private readonly LoginUseCase _useCase;
 
     public LoginUseCaseTests()
     {
         _userRepositoryMock = new Mock<IUserRepository>();
         _tokenServiceMock = new Mock<ITokenService>();
-        _useCase = new LoginUseCase(_userRepositoryMock.Object, _tokenServiceMock.Object);
+        _passwordHasher = new PasswordHasher();
+        _useCase = new LoginUseCase(_userRepositoryMock.Object, _tokenServiceMock.Object, _passwordHasher);
     }
 
     [Fact]
@@ -28,7 +31,7 @@ public class LoginUseCaseTests
         // Arrange
         var email = "test@example.com";
         var password = "password123";
-        var passwordHash = "password123"; // В реальном приложении это должен быть хеш
+        var passwordHash = _passwordHasher.HashPassword(password);
         var token = "test-token";
 
         var user = new User
@@ -78,8 +81,9 @@ public class LoginUseCaseTests
     {
         // Arrange
         var email = "test@example.com";
-        var password = "wrong-password";
-        var passwordHash = "correct-hash";
+        var correctPassword = "correct-password";
+        var wrongPassword = "wrong-password";
+        var passwordHash = _passwordHasher.HashPassword(correctPassword);
 
         var user = new User
         {
@@ -93,7 +97,7 @@ public class LoginUseCaseTests
             .ReturnsAsync(user);
 
         // Act
-        var result = await _useCase.ExecuteAsync(email, password);
+        var result = await _useCase.ExecuteAsync(email, wrongPassword);
 
         // Assert
         result.Should().BeNull();

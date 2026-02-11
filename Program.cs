@@ -50,6 +50,7 @@ builder.Services.AddScoped<ICommentRepository, CommentRepository>();
 builder.Services.AddScoped<IDocumentMetadataRepository, DocumentMetadataRepository>();
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IFileService, FileService>();
+builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
 
 builder.Services.AddScoped<GetMyDocumentsUseCase>();
 builder.Services.AddScoped<CreateDocumentUseCase>();

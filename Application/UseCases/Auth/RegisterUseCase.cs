@@ -1,3 +1,4 @@
+using DocumentManager.Api.Application.Interfaces;
 using DocumentManager.Api.Domain.Entities;
 using DocumentManager.Api.Domain.Interfaces;
 
@@ -7,11 +8,16 @@ public class RegisterUseCase
 {
     private readonly IUserRepository _userRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IPasswordHasher _passwordHasher;
 
-    public RegisterUseCase(IUserRepository userRepository, IUnitOfWork unitOfWork)
+    public RegisterUseCase(
+        IUserRepository userRepository, 
+        IUnitOfWork unitOfWork,
+        IPasswordHasher passwordHasher)
     {
         _userRepository = userRepository;
         _unitOfWork = unitOfWork;
+        _passwordHasher = passwordHasher;
     }
 
     public async Task<(bool Success, string? ErrorMessage)> ExecuteAsync(string email, string password)
@@ -22,7 +28,7 @@ public class RegisterUseCase
         var user = new User
         {
             Email = email,
-            PasswordHash = password 
+            PasswordHash = _passwordHasher.HashPassword(password)
         };
 
         await _userRepository.AddAsync(user);
